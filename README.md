@@ -1,5 +1,7 @@
 # Submission Scorer — Ticket 02
 
+# If the application is loading for a long time it's because of inactivity and will be working properly in 1 minute (it's because of restricted functionality for free users in Render)
+
 # Ticket Selection & Rationale
 I chose Ticket 02: Submission Scorer. I wanted to build a robust, secure state machine (DRAFT to REVIEWED to PUBLISHED) across a full-stack boundary rather than relying solely on client-side state variables.
 
