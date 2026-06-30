@@ -1,7 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getAllScores, getPublishedScores, getScore, extractErrorMessage } from '../services/api';
+import {
+  getAllScores,
+  getPublishedScores,
+  getScore,
+  updateScore,
+  publishScore,
+  extractErrorMessage,
+  isLockedError,
+} from '../services/api';
 import { ScoreDto, ScoreStatus, PILLARS } from '../types';
 import PublishedView from '../components/PublishedView';
+import PillarCard from '../components/PillarCard';
 import { formatDate, formatDateTime, parseDate } from '../utils/date';
 import { calculateTotal } from '../utils/scoreAggregation';
 
@@ -13,13 +22,21 @@ const STATUS_LABEL: Record<ScoreStatus, string> = {
   PUBLISHED: 'Published',
 };
 
-const ReportsPage: React.FC = () => {
+interface ReportsPageProps {
+  /** Called whenever a score is edited or published from within this page,
+   *  so App can keep its activeScore in sync if it's the same record. */
+  onScoreUpdated?: (score: ScoreDto) => void;
+}
+
+const ReportsPage: React.FC<ReportsPageProps> = ({ onScoreUpdated }) => {
   const [scores, setScores] = useState<ScoreDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterMode>('all');
   const [selected, setSelected] = useState<ScoreDto | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [lockedError, setLockedError] = useState(false);
 
   const fetchScores = useCallback(async () => {
     setLoading(true);
@@ -40,6 +57,7 @@ const ReportsPage: React.FC = () => {
 
   const handleOpen = async (scoreId: number) => {
     setLoadingDetail(true);
+    setError(null);
     try {
       const detail = await getScore(scoreId);
       setSelected(detail);
@@ -47,6 +65,62 @@ const ReportsPage: React.FC = () => {
       setError(extractErrorMessage(e));
     } finally {
       setLoadingDetail(false);
+    }
+  };
+
+  const handleClose = () => {
+    setSelected(null);
+    setLockedError(false);
+    // Re-fetch the list so any status change made in the detail view
+    // (e.g. draft -> reviewed -> published) is reflected immediately.
+    fetchScores();
+  };
+
+  const handlePillarUpdate = useCallback(
+    async (
+      scoreKey: keyof ScoreDto,
+      feedbackKey: keyof ScoreDto,
+      newScore: number,
+      newFeedback: string
+    ) => {
+      if (!selected) return;
+      setError(null);
+      setLockedError(false);
+      try {
+        const updated = await updateScore(selected.id, {
+          [scoreKey]: newScore,
+          [feedbackKey]: newFeedback,
+        });
+        setSelected(updated);
+        onScoreUpdated?.(updated);
+      } catch (e) {
+        if (isLockedError(e)) {
+          setLockedError(true);
+        } else {
+          setError(extractErrorMessage(e));
+        }
+      }
+    },
+    [selected]
+  );
+
+  const handlePublish = async () => {
+    if (!selected) return;
+    setPublishing(true);
+    setError(null);
+    setLockedError(false);
+    try {
+      const published = await publishScore(selected.id);
+      setSelected(published);
+      onScoreUpdated?.(published);
+    } catch (e) {
+      if (isLockedError(e)) {
+        setLockedError(true);
+      } else {
+        setError(extractErrorMessage(e));
+      }
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -64,12 +138,12 @@ const ReportsPage: React.FC = () => {
 
   if (selected) {
     if (selected.status === 'PUBLISHED') {
-      return <PublishedView score={selected} onBack={() => setSelected(null)} />;
+      return <PublishedView score={selected} onBack={handleClose} />;
     }
-    // Non-published detail view (draft / reviewed)
+    // Non-published detail view (draft / reviewed) — editable, with publish
     return (
       <div className="reports-detail-view">
-        <button className="btn-back" onClick={() => setSelected(null)}>
+        <button className="btn-back" onClick={handleClose}>
           ← Back to reports
         </button>
         <div className="detail-header">
@@ -84,33 +158,59 @@ const ReportsPage: React.FC = () => {
               ` · Updated ${formatDateTime(selected.updatedAt)}`}
           </p>
         </div>
+
+        {error && (
+          <div className="error-banner" style={{ marginBottom: 16 }}>
+            <strong>Error:</strong> {error}
+          </div>
+        )}
+
+        {lockedError && (
+          <div className="locked-banner" style={{ marginBottom: 16 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+            </svg>
+            This score is published and locked. No further edits are allowed.
+          </div>
+        )}
+
         <div className="detail-total-row">
           <span className="detail-total-label">Total score</span>
           <span className="detail-total-value">{selected.totalScore}</span>
           <span className="detail-total-max">/100</span>
         </div>
-        <div className="detail-pillars">
-          {PILLARS.map((p) => {
-            const s = selected[p.key] as number;
-            const fb = selected[p.feedbackKey] as string;
-            const pct = (s / 20) * 100;
-            const color = pct >= 75 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
-            return (
-              <div key={p.key} className="detail-pillar-row">
-                <div className="detail-pillar-top">
-                  <div>
-                    <span className="detail-pillar-label">{p.label}</span>
-                    <span className="detail-pillar-desc">{p.description}</span>
-                  </div>
-                  <span className="detail-score" style={{ color }}>{s}<span className="detail-denom">/20</span></span>
-                </div>
-                <div className="pub-progress-bg">
-                  <div className="pub-progress-fill" style={{ width: `${pct}%`, backgroundColor: color }} />
-                </div>
-                <p className="pub-feedback">{fb || <em style={{ color: 'var(--text-muted)' }}>No feedback yet</em>}</p>
-              </div>
-            );
-          })}
+
+        <div className="pillars-grid" style={{ marginBottom: 20 }}>
+          {PILLARS.map((pillar) => (
+            <PillarCard
+              key={pillar.key}
+              pillar={pillar}
+              score={selected[pillar.key] as number}
+              feedback={selected[pillar.feedbackKey] as string}
+              status={selected.status}
+              onUpdate={handlePillarUpdate}
+            />
+          ))}
+        </div>
+
+        <div className="publish-bar">
+          <button
+            className="btn-publish"
+            onClick={handlePublish}
+            disabled={publishing}
+          >
+            {publishing ? (
+              <span className="btn-inner">
+                <span className="spinner spinner-dark" />
+                Publishing…
+              </span>
+            ) : (
+              'Publish score'
+            )}
+          </button>
+          <span className="publish-notice">
+            Editing pillar scores moves this from Draft to Reviewed. Publishing locks it permanently.
+          </span>
         </div>
       </div>
     );

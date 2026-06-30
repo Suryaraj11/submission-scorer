@@ -97,7 +97,13 @@ function App() {
             onGoToReports={() => setPage('reports')}
           />
         ) : (
-          <ReportsPage />
+          <ReportsPage
+            onScoreUpdated={(updated) => {
+              if (activeScore && activeScore.id === updated.id) {
+                handleScoreChange(updated);
+              }
+            }}
+          />
         )}
       </main>
     </div>
