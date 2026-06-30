@@ -1,108 +1,24 @@
 # Submission Scorer — Ticket 02
 
-Full-stack scoring app with Java Spring Boot, React TypeScript, and PostgreSQL.
+# Ticket Selection & Rationale
+I chose Ticket 02: Submission Scorer. I wanted to build a robust, secure state machine (DRAFT to REVIEWED to PUBLISHED) across a full-stack boundary rather than relying solely on client-side state variables.
 
-## Architecture
+# Tech Stack & Justification
+Frontend: React (TypeScript) deployed on Vercel.
+Backend: Spring Boot (Java 17, Hibernate, PostgreSQL) deployed on Render.
+This stack provides strict type-safety across both environments, reliable database transactions, and an enterprise-ready framework to enforce strict state transitions.
 
-```
-submission-scorer/
-├── backend/                  # Spring Boot 3 + Java 17
-│   ├── src/main/java/com/scorer/
-│   │   ├── controller/       # ScoreController (REST endpoints)
-│   │   ├── service/          # ScoreService + AnthropicService
-│   │   ├── repository/       # JPA ScoreRepository
-│   │   ├── model/            # Score entity + ScoreStatus enum
-│   │   ├── dto/              # Request/Response DTOs
-│   │   └── config/           # RestTemplate + ObjectMapper beans
-│   └── src/main/resources/
-│       ├── application.properties
-│       └── init.sql
-├── frontend/                 # React 18 + TypeScript
-│   └── src/
-│       ├── pages/            # ScorerPage (main reviewer UI)
-│       ├── components/       # PillarCard, PublishedView
-│       ├── services/         # api.ts (Axios calls)
-│       └── types/            # TypeScript types + PILLARS config
-└── docker-compose.yml
-```
+# Scope Adjustments & Simplifications
+Hardcoded Submissions: Followed the specification to hardcode the candidate submission text into the initial view to focus purely on the evaluation pipeline.
+UI Polish: Instead of getting to know that published reports can't be edited I showed a lock symbol below every feedback to make sure its uneditable.
 
-## State Machine
+# AI Tooling Integration & Critical Decisions
+Usage: Used LLM assistance to generate clean mock data boundaries for the edge-case unit tests and structure the initial prompt layout for pillar evaluation.
+Pushback: The AI initially recommended handling the "locked score" state machine purely via React frontend component state. I rejected this advice and moved the state validation rule directly into the Spring Boot REST controller/service layer.
 
-```
-DRAFT → REVIEWED → PUBLISHED (locked)
-```
+# Total Time spent: 
+2.5 to 3 Hours Coding core flow: 1.5 to 2 hours and Render/Vercel CI/CD pipeline configuration: 30 to 60 mins.
 
-- **DRAFT**: AI-generated score, editable
-- **REVIEWED**: Reviewer has made edits, still editable
-- **PUBLISHED**: Locked forever. API returns 409 on any edit attempt
-
-## API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/scores/generate` | Generate draft score via Claude |
-| GET | `/api/scores/{id}` | Fetch score by ID |
-| GET | `/api/scores/submission/{submissionId}` | Fetch latest score for submission |
-| PUT | `/api/scores/{id}` | Update pillar scores/feedback |
-| POST | `/api/scores/{id}/publish` | Publish score (locks it) |
-
-## Quick Start
-
-### Option A: Docker Compose (recommended)
-
-```bash
-# Set your Anthropic API key
-export ANTHROPIC_API_KEY=sk-ant-...
-
-# Start everything
-docker-compose up --build
-
-# App runs at:
-# Frontend: http://localhost:3000
-# Backend:  http://localhost:8080
-# Postgres: localhost:5432
-```
-
-### Option B: Manual
-
-**Database**
-```bash
-psql -U postgres -f backend/src/main/resources/init.sql
-```
-
-**Backend**
-```bash
-cd backend
-export ANTHROPIC_API_KEY=sk-ant-...
-mvn spring-boot:run
-```
-
-**Frontend**
-```bash
-cd frontend
-npm install
-npm start
-```
-
-## Five Pillars
-
-Each scored out of 20, total out of 100:
-
-1. **Analytical Rigour** — Use of data, evidence, and structured thinking
-2. **Commercial Acumen** — Business awareness, market understanding, revenue thinking
-3. **Quality of Output** — Thoroughness, professionalism, and completeness of work
-4. **Communication** — Clarity, conciseness, and effectiveness of communication
-5. **Initiative & Ownership** — Proactiveness, decision-making, and taking responsibility
-
-## Features
-
-- ✅ Hardcoded candidate submission displayed on page
-- ✅ "Generate draft score" calls Claude via Anthropic API
-- ✅ Five pillar scores (each /20) with per-pillar feedback
-- ✅ Inline editing of score + feedback per pillar
-- ✅ Save / Discard per-pillar changes
-- ✅ State machine: DRAFT → REVIEWED → PUBLISHED
-- ✅ Publish button locks all editing
-- ✅ 409 error + visible UI message when editing a published score
-- ✅ Separate published view (candidate-facing) with total and ring chart
-- ✅ PostgreSQL persistence
+# How to Run the Tests
+Backend Unit Tests: move to the backend package in main directory(submission-scorer -> backend)
+command: mvn test
