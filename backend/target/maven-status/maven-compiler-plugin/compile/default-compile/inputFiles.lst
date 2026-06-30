@@ -1,0 +1,13 @@
+/Users/surya/Downloads/submission-scorer/backend/src/main/java/com/scorer/service/ScoreService.java
+/Users/surya/Downloads/submission-scorer/backend/src/main/java/com/scorer/model/ScoreTier.java
+/Users/surya/Downloads/submission-scorer/backend/src/main/java/com/scorer/model/ScoreStatus.java
+/Users/surya/Downloads/submission-scorer/backend/src/main/java/com/scorer/repository/ScoreRepository.java
+/Users/surya/Downloads/submission-scorer/backend/src/main/java/com/scorer/dto/ScoreDto.java
+/Users/surya/Downloads/submission-scorer/backend/src/main/java/com/scorer/model/Score.java
+/Users/surya/Downloads/submission-scorer/backend/src/main/java/com/scorer/dto/UpdateScoreRequest.java
+/Users/surya/Downloads/submission-scorer/backend/src/main/java/com/scorer/service/AnthropicService.java
+/Users/surya/Downloads/submission-scorer/backend/src/main/java/com/scorer/config/AppConfig.java
+/Users/surya/Downloads/submission-scorer/backend/src/main/java/com/scorer/dto/GenerateScoreRequest.java
+/Users/surya/Downloads/submission-scorer/backend/src/main/java/com/scorer/service/ScoreAggregator.java
+/Users/surya/Downloads/submission-scorer/backend/src/main/java/com/scorer/SubmissionScorerApplication.java
+/Users/surya/Downloads/submission-scorer/backend/src/main/java/com/scorer/controller/ScoreController.java
